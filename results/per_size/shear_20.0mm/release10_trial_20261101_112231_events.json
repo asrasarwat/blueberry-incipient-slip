@@ -1,0 +1,13 @@
+{
+ "placement": 0.00087,
+ "squeeze": 3.031885,
+ "handoff": 4.700327,
+ "settle": 5.765211,
+ "grip_set": 10.833278,
+ "hold": 21.233504,
+ "loosen": 25.498569,
+ "low_force": 35.234277,
+ "drop": 38.85,
+ "post": 42.634093,
+ "drop_script": 37.533872
+}
