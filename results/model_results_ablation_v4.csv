@@ -1,0 +1,11 @@
+features,split,auc,caught,hold_FA,warn_med_s
+all (deployed),LOBO,0.946,69/70,0,5.25
+all (deployed),LOSO,0.948,69/70,0,5.08
+shear only,LOBO,0.928,63/70,0,5.13
+shear only,LOSO,0.929,66/70,0,5.05
+force only,LOBO,0.937,55/70,0,4.05
+force only,LOSO,0.937,62/70,0,4.42
+time only,LOBO,0.818,70/70,0,10.18
+time only,LOSO,0.821,70/70,0,10.19
+force + time,LOBO,0.937,69/70,0,6.65
+force + time,LOSO,0.932,69/70,0,7.13
