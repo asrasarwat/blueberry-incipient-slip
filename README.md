@@ -1,16 +1,27 @@
-# Tactile Detection of Incipient Slip in Robotic Blueberry Grasping — Dataset
+# Tactile Detection of Incipient Slip in Robotic Blueberry Grasping — Code and Dataset
 
-Per-trial tactile, kinematic and camera-timing data for the paper:
+Analysis code, per-trial results, trained predictor and dataset description for
+the paper:
 
 > A. Sarwat and W. Lu, "Tactile Detection of Incipient Slip and Early Warning of
 > Grasp Loss in Robotic Blueberry Grasping," *IEEE Robotics and Automation
 > Letters*, under review, 2026.
 
-Analysis code: <GITHUB URL>   ·   Licence: data CC BY 4.0, code MIT
+Repository: https://github.com/asrasarwat/blueberry-incipient-slip   ·   Licence: data CC BY 4.0, code MIT
 
 ---
 
 ## 1. Contents
+
+This repository holds:
+
+| folder | what |
+|---|---|
+| `scripts/` | acquisition, feature extraction, training and analysis code |
+| `results/` | per-trial and summary results behind every table and figure |
+| `model/` | trained grasp-loss predictor (`slip_model_v4.pkl`) and its NumPy export (`slip_model_v4_np.npz`) |
+
+The trial data are published as archives on the repository's **Releases** page:
 
 | archive | size | what |
 |---|---|---|
@@ -22,7 +33,7 @@ Raw high-speed camera frames (~285 GB) are **not** included. They are available
 from the corresponding author on reasonable request. Nothing in the paper
 requires them: every reported number is computable from the files here.
 
-Verify downloads against `SHA256SUMS.txt`:
+Verify downloads against `SHA256SUMS.txt` (also on the Releases page):
 
     sha256sum -c SHA256SUMS.txt
 
@@ -50,27 +61,31 @@ Verify downloads against `SHA256SUMS.txt`:
       size_15.0mm/ ... size_21.0mm/
 
 All times in seconds. `elapsed_s` is time from the start of the trial and is the
-common clock across every file in a folder. `wall_time` is a Unix timestamp.
+common clock across every file in a folder: camera frames and tactile samples
+are time-stamped on the same host clock. `wall_time` is a Unix timestamp.
 
 ---
 
 ## 3. Which trials are analysed  (IMPORTANT)
 
 The archive holds **88** trial folders. The paper analyses **70**. Both numbers
-are correct: 18 folders are present but excluded, and all of them are listed
-below so the counts can be checked by inspection.
+are correct: 18 folders are present but not analysed, and all of them are
+listed below so the counts can be checked by inspection.
 
 | category | n |
 |---|---|
 | analysed (the paper's 70) | 70 |
 | excluded by quality control (`flagged*`) | 13 |
+| excluded by quality control but **named `release`** (21 mm) | 3 |
 | rejected during recording (`rejected01`) | 1 |
 | spare trial, never analysed (16 mm) | 1 |
-| excluded but **named `release`** (21 mm) | 3 |
 | **total folders** | **88** |
 
+The 13 + 3 = 16 quality-control exclusions are the 16 excluded trials reported
+in the paper (supplementary Table S4).
+
 The authoritative list of the 70 is the `trial` column of
-`claim1_results/gross_slip_per_trial.csv` in the code repository.
+`results/claim1_results/gross_slip_per_trial.csv`.
 `trial_map.csv` in each size folder also carries a `status` column.
 
 **Warning — the 21 mm folder.** At every other size the excluded trials were
@@ -81,7 +96,7 @@ prefix but are **not** part of the 70:
     release06_trial_20261106_130402
     release12_trial_20261106_135237
 
-The other 18 non-analysed folders:
+The other 15 non-analysed folders:
 
     flagged01_trial_20261029_203838     flagged02_trial_20261103_125554
     flagged01_trial_20261101_121449     flagged03_trial_20261101_131713
@@ -149,13 +164,10 @@ Wrench and contact columns: `index_Fx/Fy/Fz`, `index_Tx/Ty/Tz`,
 `index_cop_row`, `index_cop_col` (centre of pressure, grid units),
 `index_contact_x/y`, `index_contact_area`, `index_area_rel`.
 
-> **AUTHORS: confirm before publishing.** The following columns are present but
-> their exact definitions are not stated in the paper, so they are described
-> loosely here: `index_pressure`, `index_shear_N`, `index_sn_ratio`,
-> `index_cop_drift`, `index_flow_centre`, `index_flow_edge_centre`,
-> `motion_magnitude`, `motion_max`, `motion_mean`. Either define each one in
-> this table or delete this paragraph and state that they are intermediate
-> quantities not used in the paper.
+The remaining columns (`index_pressure`, `index_shear_N`, `index_sn_ratio`,
+`index_cop_drift`, `index_flow_centre`, `index_flow_edge_centre`,
+`motion_magnitude`, `motion_max`, `motion_mean`) are intermediate quantities
+logged during acquisition and are not used in the paper.
 
 ---
 
@@ -164,7 +176,7 @@ Wrench and contact columns: `index_Fx/Fy/Fz`, `index_Tx/Ty/Tz`,
 **`trial_map.csv`** (one per size) — `folder, original, berry_id, diameter_mm,
 drop_camera_s, status`. `berry_id` identifies the physical berry (e.g. `B14a`),
 which is what the leave-one-berry-out validation groups on. At most three
-trials share a `berry_id`.
+valid trials share a `berry_id`.
 
 **`slip_curve.csv`** — `tick, loosen_rad, index_Fz_N, thumb_Fz_N, elapsed_s`.
 The release ramp: commanded joint opening against the resulting fingertip
@@ -200,18 +212,21 @@ bracketing range and a note on how it was determined.
 | camera rate | 100 fps, common hardware trigger |
 | gross-slip threshold | 0.3 mm sustained for 0.25 s (0.1–0.5 mm as sensitivity checks) |
 | **camera-delay correction** | **−0.125 s on every camera event time** |
+| contact patch | taxels above 0.10 × max mean normal force over the first 1 s of the hold |
+| centre / edge regions | markers within 0.5 r / beyond 0.7 r of the patch centroid (r = equivalent radius) |
 | stuck-marker threshold | `u0 = 0.5 px` |
-| onset rule | `z* = 5`, sustained `T_min = 0.25 s` |
+| onset rule | `z* = 5`, sustained `T_min = 0.25 s`; baseline SD floored at 1e-3 |
 | causal alarm | onset + `T_min`; an online detector cannot fire earlier |
-| predictor horizon | `H = 3 s` |
+| predictor | 29 features every 0.05 s; baseline = first 3 s of the hold; horizon `H = 3 s` |
+| predictor alarm | `p(t) > τ` for 0.25 s, `τ` = max hold probability in the training fold + 0.02 |
+| quality control | max sensor gap 0.4 s between hold and drop |
 | tactile rate | median 95.8 Hz per fingertip (range 90.0–97.6) |
 
 The camera-delay correction exists because gross slip is detected after a
 trailing 0.25 s running median, which delays a crossing by about half its
 window (measured: 120–125 ms, SD ≤ 15 ms on synthetic ramps). **Omitting it
 changes the reported lead times.** Tracking precision during the hold was
-0.6 µm (median), 2.6 µm (95th percentile). Camera-to-tactile synchronisation
-was not measured.
+0.6 µm (median), 2.6 µm (95th percentile).
 
 ---
 
@@ -231,6 +246,13 @@ for anything measured. Sheets are included for excluded trials too.
 
 ## 9. Citation
 
-    <BIBTEX ONCE THE PAPER HAS A DOI>
+    @article{sarwat2026blueberry,
+      author  = {Sarwat, Asra and Lu, Wenjie},
+      title   = {Tactile Detection of Incipient Slip and Early Warning of Grasp
+                 Loss in Robotic Blueberry Grasping},
+      journal = {IEEE Robotics and Automation Letters},
+      year    = {2026},
+      note    = {Under review}
+    }
 
-Data licensed CC BY 4.0. Analysis code at <GITHUB URL> under MIT.
+Data licensed CC BY 4.0. Code licensed MIT.
